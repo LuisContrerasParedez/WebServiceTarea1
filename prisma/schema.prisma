@@ -12,3 +12,97 @@ model usuario {
   email String @unique
   name  String
 }
+
+model WebhookEvent {
+  id         Int      @id @default(autoincrement())
+  tipo       String
+  datos      Json
+  source     String?    // opcional: origen del evento
+  headers    Json?      // opcional: headers recibidos
+  status     EventStatus @default(PENDING)
+  receivedAt DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([tipo])
+  @@index([status, receivedAt])
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSED
+  ERROR
+}
+
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+}
+
+enum CalendarItemType {
+  EVENT     // reuniones
+  TASK      // tareas/seguimientos
+}
+
+enum SyncStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+model CalendarAccount {
+  id            Int              @id @default(autoincrement())
+  userId        Int
+  provider      CalendarProvider
+  email         String
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  scope         String?
+  status        SyncStatus       @default(ACTIVE)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Para webhooks entrantes del proveedor
+  webhookSecret     String?
+  webhookResourceId String?   // Google watch(resourceId) o suscripción Outlook
+
+  events        CalendarEvent[]
+
+  @@unique([userId, provider])
+  @@index([email])
+}
+
+model CalendarEvent {
+  id             Int               @id @default(autoincrement())
+  accountId      Int
+  provider       CalendarProvider
+  itemType       CalendarItemType   @default(EVENT)
+
+  // Identificadores cruzados
+  externalId     String?            // id del evento en Google/Outlook
+  crmId          Int?               // id de la tarea/actividad en el CRM
+
+  title          String
+  description    String?
+  location       String?
+  startAt        DateTime
+  endAt          DateTime
+  allDay         Boolean            @default(false)
+  timezone       String?            // ej: "America/Guatemala"
+
+  // Control de versiones/sync
+  etag           String?            // para colisiones (Google etag / Outlook changeKey)
+  lastExternalAt DateTime?          // última actualización proveniente del proveedor
+  lastCrmAt      DateTime?          // última actualización proveniente del CRM
+  deleted        Boolean            @default(false)
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  account        CalendarAccount    @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, externalId])
+  @@index([crmId])
+  @@index([provider, itemType])
+}

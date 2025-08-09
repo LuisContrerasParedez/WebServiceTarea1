@@ -3,9 +3,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsuarioModule } from './usuario/usuario.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { WebhookReceiverModule } from './webhook-receiver/webhook-receiver.module';
 
 @Module({
-  imports: [UsuarioModule, PrismaModule],
+  imports: [UsuarioModule, PrismaModule, WebhookReceiverModule],
   controllers: [AppController],
   providers: [AppService],
 })
